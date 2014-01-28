@@ -23,14 +23,14 @@
 RAM::RAM()
 {
 	ram_size = DEFAULT_MEM;
-	ram = new char[DEFAULT_MEM];
+	ram = new unsigned char[DEFAULT_MEM];
 }
 
 
 RAM::RAM(size_t bytes)
 {
 	ram_size = bytes;
-	ram = new char[bytes];
+	ram = new unsigned char[bytes];
 }
 
 
@@ -39,7 +39,7 @@ RAM::reset()
 {
 	if (this->ram == NULL)
 		delete this->ram;
-	this->ram = new char[this->ram_size];
+	this->ram = new unsigned char[this->ram_size];
 	memset(this->ram, 0x0, this->ram_size);
 }
 

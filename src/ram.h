@@ -25,8 +25,8 @@ const size_t	DEFAULT_MEM = 131072;
 
 class RAM {
 	private:
-		char	*ram;
-		size_t	 ram_size;
+		unsigned char	*ram;
+		size_t		 ram_size;
 	public:
 		RAM();
 		RAM(size_t);
