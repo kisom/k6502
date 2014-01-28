@@ -21,24 +21,72 @@ using namespace std;
 #include "cpu.h"
 
 
+static void
+test1(void)
+{
+	// LDA #$01
+	// STA $0200
+	// LDA #$05
+	// STA $0201
+	// LDA #$08
+	// STA $0202
+	CPU	cpu(0x300);
+
+	cpu.LDA(1);
+	cpu.STA(0x200);
+	cpu.LDA(5);
+	cpu.STA(0x201);
+	cpu.LDA(8);
+	cpu.STA(0x202);
+	cpu.dump_memory();
+	cpu.dump_registers();
+}
+
+
+static void
+test2(void)
+{
+	// LDA #$c0  ;Load the hex value $c0 into the A register
+	// TAX       ;Transfer the value in the A register to X
+	// INX       ;Increment the value in the X register
+	// ADC #$c4  ;Add the hex value $c4 to the A register
+	// BRK       ;Break - we're done
+	CPU	cpu(0x300);
+
+	cpu.start_pc(0x600);
+	cpu.dump_registers();
+	cpu.LDA(0xc0);
+	cpu.step_pc(); cpu.step_pc();
+	cpu.dump_registers();
+	cpu.TAX();
+	cpu.step_pc();
+	cpu.dump_registers();
+	cpu.INX();
+	cpu.step_pc();
+	cpu.dump_registers();
+	cpu.ADC(0xc4);
+	cpu.step_pc(); cpu.step_pc();
+	cpu.dump_registers();
+	cpu.BRK();
+	cpu.step_pc();
+	cpu.dump_memory();
+	cpu.dump_registers();
+
+	// Expected:
+	//	A=$84 X=$c1 Y=$00
+	//	SP=$ff PC=$0607
+	//	NV-BDIZC
+	//	10110001
+}
+
+
 int
 main(void)
 {
-	CPU	cpu(128);
-
-	cpu.dump_registers();
-	cpu.LDA(0xc0);
-	cpu.dump_registers();
-	cpu.dump_memory();
-	cpu.STA(0x20);
-	cpu.dump_memory();
-	cpu.TAX();
-	cpu.INX();
-	cpu.dump_registers();
-	cpu.ADC(0xc4);
-	cpu.dump_registers();
-	cpu.SEC();
-	cpu.dump_registers();
-	cpu.CLC();
-	cpu.dump_registers();
+	test1();
+	test2();
 }
+
+
+
+
