@@ -21,9 +21,16 @@ using namespace std;
 #include "cpu.h"
 
 
-static void
-test1(void)
+void	test1(void);
+void	test2(void);
+void	test3(void);
+
+
+void
+test1()
 {
+	std::cerr << "Starting test 1\n";
+	std::cerr << "\t(set memory 0x200-0x202)\n";
 	// LDA #$01
 	// STA $0200
 	// LDA #$05
@@ -43,9 +50,11 @@ test1(void)
 }
 
 
-static void
-test2(void)
+void
+test2()
 {
+	std::cerr << "Starting test 2\n";
+	std::cerr << "\t(overflow checks)\n";
 	// LDA #$c0  ;Load the hex value $c0 into the A register
 	// TAX       ;Transfer the value in the A register to X
 	// INX       ;Increment the value in the X register
@@ -64,7 +73,7 @@ test2(void)
 	cpu.INX();
 	cpu.step_pc();
 	cpu.dump_registers();
-	cpu.ADC(0xc4);
+	cpu.ADC((uint8_t)0xc4);
 	cpu.step_pc(); cpu.step_pc();
 	cpu.dump_registers();
 	cpu.BRK();
@@ -80,13 +89,34 @@ test2(void)
 }
 
 
+void
+test3()
+{
+	std::cerr << "Starting test 3\n";
+	std::cerr << "\t(non-negative overflow)\n";
+	// LDA #$80
+	// STA $01
+	// ADC $01
+	CPU	cpu(128);
+
+	cpu.LDA(0x80);
+	cpu.STA(0x01);
+	cpu.ADC((uint16_t)0x01);
+	cpu.dump_memory();
+	cpu.dump_registers();
+
+	// Expected:
+	//	A=$00 X=$00 Y=$00
+	//	SP=$ff PC=$0609
+	//	NV-BDIZC
+	//	01110011
+}
+
+
 int
 main(void)
 {
 	test1();
 	test2();
+	test3();
 }
-
-
-
-
