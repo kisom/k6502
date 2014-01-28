@@ -61,7 +61,8 @@ RAM::dump()
 	for (i = 0; i < this->ram_size; ++i) {
 		if (l == 0)
 			std::cerr << std::setw(8) << std::hex << i << "| ";
-		std::cerr << std::setw(2) << std::hex << int(this->ram[i]);
+		std::cerr << std::hex << std::setw(2)
+			  << (unsigned short)(this->ram[i] & 0xff);
 		std::cerr << " ";
 		l++;
 		if (l == 8) {
