@@ -10,3 +10,6 @@ depcomp
 install-sh
 missing
 .*.sw?
+*.o
+*.a
+src/test
