@@ -56,6 +56,22 @@ status_flags(cpu_register8 p)
 }
 
 
+/*
+static uint8_t
+overflow(uint8_t a, uint8_t b)
+{
+	uint8_t bit7 = 1 << 7;
+	uint8_t carry = ((a << 1 >> 1) + (b << 1 >> 1)) & bit7;
+	uint8_t v;
+
+	//  V = (!M7&!N7&C6) | (M7&N7&!C6) 
+	v = ((!(a & bit7)) & (!(b & bit7)) & carry);
+	v |= ((a & bit7) & (b & bit7) & (!carry));
+	return v;
+}
+*/
+
+
 CPU::CPU(size_t memory)
 {
 	debug("init memory");
@@ -130,9 +146,9 @@ CPU::start_pc(uint16_t loc)
 void
 CPU::ADC(uint8_t v)
 {
-	debug("ADC");
+	debug("ADC IMM");
 	if ((uint8_t)(this->a + v) < (this->a))
-		this->p |= FLAG_CARRY;
+		this->p |= (FLAG_CARRY|FLAG_OVERFLOW);
 
 	this->a += v;
 
@@ -141,6 +157,18 @@ CPU::ADC(uint8_t v)
 
 	if (this->a & 0x80)
 		this->p |= FLAG_NEGATIVE;
+
+	if (!(this->a & 0x80))
+		this->p &= ~FLAG_NEGATIVE;
+}
+
+
+void
+CPU::ADC(uint16_t loc)
+{
+	debug("ADC LOC");
+	uint8_t		v = this->ram.peek(loc);
+	this->ADC(v);
 }
 
 
@@ -163,6 +191,8 @@ CPU::LDA(uint8_t v)
 		this->p |= FLAG_ZERO;
 	if (v & 0x80)
 		this->p |= FLAG_NEGATIVE;
+	else
+		this->p &= ~FLAG_NEGATIVE;
 }
 
 

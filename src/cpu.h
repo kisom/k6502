@@ -75,6 +75,7 @@ class CPU {
 
 		// Instructions
 		void ADC(uint8_t);
+		void ADC(uint16_t);
 		void INX(void);
 		void LDA(uint8_t);
 		void STA(uint16_t);
