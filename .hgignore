@@ -1,0 +1,13 @@
+syntax: glob
+Makefile
+Makefile.in
+*.m4
+.deps
+autom4te.cache
+compile
+config.*
+configure
+depcomp
+install-sh
+missing
+.*.sw?
