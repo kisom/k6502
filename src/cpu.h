@@ -32,6 +32,7 @@ const uint8_t	FLAG_ZERO = 1 << 1;
 const uint8_t	FLAG_INT_DISABLE = 1 << 2;
 const uint8_t	FLAG_DECIMAL = 1 << 3;
 const uint8_t	FLAG_BREAK = 1 << 4;
+const uint8_t	FLAG_EXPANSION = 1 << 5;
 const uint8_t	FLAG_OVERFLOW = 1 << 6;
 const uint8_t	FLAG_NEGATIVE = 1 << 7;
 
@@ -48,7 +49,6 @@ class CPU {
 		cpu_register8	p;
 		cpu_register8	s;
 		cpu_register16	pc;
-		uint8_t		flags;
 		RAM		ram;
 
 		void	reset_registers(void);
@@ -59,11 +59,24 @@ class CPU {
 		void dump_registers(void);
 		void dump_memory(void);
 
-		void ADC(uint8_t);
+		// PC instructions
+		void step_pc(void);
+		void start_pc(uint16_t);
+
+		// status register
+		void BRK(void);
 		void CLC(void);
+		void CLD(void);
+		void CLI(void);
+		void CLV(void);
+		void SEC(void);
+		void SED(void);
+		void SEI(void);
+
+		// Instructions
+		void ADC(uint8_t);
 		void INX(void);
 		void LDA(uint8_t);
-		void SEC(void);
 		void STA(uint16_t);
 		void TAX(void);
 };
