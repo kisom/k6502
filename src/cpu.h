@@ -52,12 +52,18 @@ class CPU {
 		RAM		ram;
 
 		void	reset_registers(void);
+		void	instrc01(uint8_t);
 	public:
 		CPU();
 		CPU(size_t);
 
 		void dump_registers(void);
 		void dump_memory(void);
+		void step(void);
+
+		// Memory access
+		void load(const void *, uint16_t, uint16_t);
+		void store(void *, uint16_t, uint16_t);
 
 		// PC instructions
 		void step_pc(void);

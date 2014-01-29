@@ -31,11 +31,20 @@ class RAM {
 		RAM();
 		RAM(size_t);
 
+		// Control.
 		size_t size();
 		void reset(void);
+
+		// Debug.
 		void dump(void);
+
+		// Memory location access and store.
 		void poke(uint16_t, uint8_t);
 		uint8_t peek(uint16_t);
+
+		// Memory load and store.
+		void load(const void *, uint16_t, uint16_t);
+		void store(void *, uint16_t, uint16_t);
 };
 
 

@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <iomanip>
 #include <iostream>
 #include <cstring>
 #include "cpu.h"
@@ -74,7 +75,7 @@ overflow(uint8_t a, uint8_t b)
 
 CPU::CPU(size_t memory)
 {
-	debug("init memory");
+	debug("INIT MEMORY");
 	this->ram = RAM(memory);
 	this->reset_registers();
 	ram.reset();
@@ -107,7 +108,7 @@ CPU::dump_registers()
 {
 	size_t	 size = this->ram.size();
 	char	*status = status_flags(this->p);
-	std::cerr << "REGISTER DUMP\n";
+	std::cerr << "\nREGISTER DUMP\n";
 	std::cerr << "\tRAM: " << std::dec << size << " bytes\n";
 	std::cerr << "\t  A: " << std::hex << (unsigned int)(this->a) << "\n";
 	std::cerr << "\t  X: " << std::hex << (unsigned int)(this->x) << "\n";
@@ -130,6 +131,20 @@ CPU::dump_memory()
 
 
 void
+CPU::load(const void *src, uint16_t offset, uint16_t len)
+{
+	this->ram.load(src, offset, len);
+}
+
+
+void
+CPU::store(void *dest, uint16_t offset, uint16_t len)
+{
+	this->ram.store(dest, offset, len);
+}
+
+
+void
 CPU::step_pc()
 {
 	this->pc++;
@@ -137,13 +152,13 @@ CPU::step_pc()
 
 
 void
-CPU::step_pc(uint8_t step)
+CPU::step_pc(uint8_t n)
 {
 	debug("STEP PC");
-	if (step & 0x80)
-		this->pc -= uint8_t(~step);
+	if (n & 0x80)
+		this->pc -= uint8_t(~n);
 	else
-		this->pc += step;
+		this->pc += n;
 }
 
 
@@ -415,11 +430,11 @@ CPU::CLV()
  */
 
 void
-CPU::BNE(uint8_t step)
+CPU::BNE(uint8_t n)
 {
 	if (this->p & FLAG_ZERO)
 		return;
-	this->step_pc(step);
+	this->step_pc(n);
 }
 
 
@@ -429,4 +444,58 @@ CPU::BNE(uint16_t loc)
 	if (this->p & FLAG_ZERO)
 		return;
 	this->pc = loc;
+}
+
+
+/*
+ * Instruction processing (reading, parsing, and handling opcodes).
+ */
+
+void
+CPU::step()
+{
+	uint8_t		op;
+
+	debug("STEP");
+	op = this->ram.peek(this->pc);
+	this->step_pc();
+
+	if (op & 0x01) {
+		this->instrc01(op);
+	}
+}
+
+
+void
+CPU::instrc01(uint8_t op)
+{
+	uint16_t	addr;
+	uint8_t		v;
+
+	switch (op) {
+	case 0xA9:	// LDA#
+		std::cerr << "[DEBUG] OP: LDA MODE: IMM\n";
+		v = this->ram.peek(this->pc);
+		this->step_pc();
+		std::cerr << "[DEBUG] LDA #$" << std::setw(2) << std::hex
+			  << std::setfill('0') << (unsigned int)(v&0xff) << std::endl;
+		this->LDA(v);
+		break;
+	case 0x8D:	// STA ABS
+		std::cerr << "[DEBUG] OP: STA MODE: ABS\n";
+		v = this->ram.peek(this->pc);
+		std::cerr << "[DEBUG] PEEK $" << std::setw(4) << std::hex
+			  << std::setfill('0') << this->pc;
+		std::cerr << ": " << std::setw(2) << std::hex << std::setfill('0')
+			  << (unsigned int)(v & 0xff) << std::endl;
+		this->step_pc();
+		addr = v << 8;
+		v = this->ram.peek(this->pc);
+		this->step_pc();
+		addr += v;
+		std::cerr << "[DEBUG] STA $" << std::setw(4) << std::hex
+			  << std::setfill('0') << addr << std::endl;
+		this->STA(addr);
+		break;
+	}
 }

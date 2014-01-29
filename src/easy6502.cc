@@ -18,6 +18,7 @@
 // As this library isn't an assembler, it won't assemble the files; I'm
 // to check some of the expected behaviours from the emulator.
 
+#include <iomanip>
 #include <iostream>
 using namespace std;
 
@@ -29,6 +30,30 @@ void	test2(void);
 void	test3(void);
 void	test4(void);
 void	test5(void);
+void	test6(void);
+
+
+static void
+dump_program(const unsigned char *program, size_t len)
+{
+	size_t	i = 0;
+	int	l = 0;
+	for (i = 0; i < len; ++i) {
+		if (l == 0)
+			std::cerr << std::setw(8) << std::hex << i << "| ";
+		std::cerr << std::hex << std::setw(2) << std::setfill('0')
+			  << (unsigned short)(program[i] & 0xff);
+		std::cerr << " ";
+		l++;
+		if (l == 8) {
+			std::cerr << " ";
+		} else if (l == 16) {
+			std::cerr << std::endl;
+			l = 0;
+		}
+	}
+	std::cerr << std::endl;
+}
 
 
 void
@@ -177,12 +202,34 @@ test5()
 }
 
 
+void
+test6()
+{
+	std::cerr << "Starting test 6\n";
+	std::cerr << "\t(First compiled program)\n";
+
+	// test1, compiled as opcodes
+	CPU		cpu(0x200);
+	unsigned char	program[] = {0xA9, 0x01, 0x8D, 0x01, 0x00};
+	std::cerr << "\nPROGRAM:\n";
+	dump_program(program, 5);
+
+	cpu.load(program, 0x20, 5);
+	cpu.start_pc(0x20);
+	cpu.step();
+	cpu.dump_registers();
+	cpu.step();
+	cpu.dump_memory();
+	cpu.dump_registers();
+}
+
 int
 main(void)
 {
-	test1();
-	test2();
-	test3();
-	test4();
-	test5();
+	//test1();
+	//test2();
+	//test3();
+	//test4();
+	//test5();
+	test6();
 }

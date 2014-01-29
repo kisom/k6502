@@ -57,11 +57,11 @@ RAM::dump()
 	size_t	i;
 	int	l = 0;
 
-	std::cerr << "MEMORY DUMP:\n";
+	std::cerr << "\nMEMORY DUMP:\n";
 	for (i = 0; i < this->ram_size; ++i) {
 		if (l == 0)
 			std::cerr << std::setw(8) << std::hex << i << "| ";
-		std::cerr << std::hex << std::setw(2)
+		std::cerr << std::hex << std::setw(2) << std::setfill('0')
 			  << (unsigned short)(this->ram[i] & 0xff);
 		std::cerr << " ";
 		l++;
@@ -87,4 +87,18 @@ uint8_t
 RAM::peek(uint16_t loc)
 {
 	return this->ram[loc];
+}
+
+
+void
+RAM::load(const void *src, uint16_t offset, uint16_t len)
+{
+	memcpy(this->ram+offset, src, len);
+}
+
+
+void
+RAM::store(void *dest, uint16_t offset, uint16_t len)
+{
+	memcpy(dest, this->ram+offset, len);
 }
