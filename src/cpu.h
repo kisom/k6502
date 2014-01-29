@@ -94,7 +94,7 @@ class CPU {
 		void TAX(void);
 		void TXA(void);
 
-		// Branching
+		// Branching / jumping
 		void BPL(uint8_t);
 		void BMI(uint8_t);
 		void BVC(uint8_t);
@@ -103,6 +103,9 @@ class CPU {
 		void BCS(uint8_t);
 		void BNE(uint8_t);
 		void BEQ(uint8_t);
+		void JMP(void);
+		void JSR(void);
+		void RTS(void);
 
 		// Stack
 		void PHA(void);
@@ -121,6 +124,9 @@ class CPU {
 		// write a memory image out.
 		void load(const void *, uint16_t, uint16_t);
 		void store(void *, uint16_t, uint16_t);
+
+		uint8_t DMA(uint16_t);
+		void DMA(uint16_t, uint8_t);
 
 };
 

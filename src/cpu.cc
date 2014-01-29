@@ -660,6 +660,49 @@ CPU::BEQ(uint8_t n)
 }
 
 
+void
+CPU::JMP()
+{
+	debug("OP: JMP");
+	uint16_t	addr = this->read_addr1(C01_MODE_ABS);
+	std::cerr << "[DEBUG] JMP ADDR: " << std::setw(4)
+		  << std::hex << std::setfill('0')
+		  << addr << std::endl;
+	this->pc = addr;
+}
+
+
+static uint16_t
+stack_addr(uint8_t sp)
+{
+	return (1 << 8) + sp;
+}
+
+
+void
+CPU::JSR()
+{
+	debug("OP: JSR");
+	uint16_t	jaddr = this->read_addr1(C01_MODE_ABS);
+	uint16_t	addr = this->pc-1;
+
+	this->ram.poke(stack_addr(this->s--), (uint8_t)(addr >> 8));
+	this->ram.poke(stack_addr(this->s--), (uint8_t)(addr << 8 >> 8));
+	this->pc = jaddr;
+}
+
+
+void
+CPU::RTS()
+{
+	debug("OP: RTS");
+	uint16_t	addr;
+	addr = this->ram.peek(stack_addr(++this->s));
+	addr += (this->ram.peek(stack_addr(++this->s)) << 8);
+	this->pc = addr+1;
+}
+
+
 /*
  * Stack instructions.
  */
@@ -704,14 +747,23 @@ CPU::step()
 	case 0x10: // BPL
 		this->BPL(this->read_immed());
 		return true;
+	case 0x20: // JSR
+		this->JSR();
+		return true;
 	case 0x30: // BMI
 		this->BMI(this->read_immed());
 		return true;
 	case 0x48: // PHA
 		this->PHA();
 		return true;
+	case 0x4C: // JMP
+		this->JMP();
+		return true;
 	case 0x50: // BVC
 		this->BVC(this->read_immed());
+		return true;
+	case 0x60: // RTS
+		this->RTS();
 		return true;
 	case 0x68: // PLA
 		this->PLA();
@@ -953,4 +1005,18 @@ CPU::read_addr0(uint8_t mode)
 	std::cerr << "[DEBUG] ADDR: $" << std::setw(4) << std::setfill('0')
 		  << std::hex << addr << std::endl;
 	return addr;
+}
+
+
+uint8_t
+CPU::DMA(uint16_t loc)
+{
+	return this->ram.peek(loc);
+}
+
+
+void
+CPU::DMA(uint16_t loc, uint8_t val)
+{
+	this->ram.poke(loc, val);
 }
