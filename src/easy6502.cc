@@ -31,6 +31,7 @@ void	test3(void);
 void	test4(void);
 void	test5(void);
 void	test6(void);
+void	test7(void);
 
 
 static void
@@ -202,6 +203,30 @@ test5()
 }
 
 
+static void
+run(const unsigned char *program, size_t size, size_t steps, bool trace)
+{
+	CPU	cpu(0x400);
+	std::cerr << "\nPROGRAM:\n";
+	dump_program(program, size);
+	std::cerr << std::endl;
+
+	cpu.load(program, 0x300, size);
+	cpu.start_pc(0x300);
+
+	size_t i;
+	for (i = 0; i < steps; ++i) {
+		cpu.step();
+		if (trace) {
+			cpu.dump_memory();
+			cpu.dump_registers();
+		}
+	}
+	cpu.dump_memory();
+	cpu.dump_registers();
+}
+
+
 void
 test6()
 {
@@ -209,19 +234,25 @@ test6()
 	std::cerr << "\t(First compiled program)\n";
 
 	// test1, compiled as opcodes
-	CPU		cpu(0x200);
 	unsigned char	program[] = {0xA9, 0x01, 0x8D, 0x01, 0x00};
-	std::cerr << "\nPROGRAM:\n";
-	dump_program(program, 5);
-
-	cpu.load(program, 0x20, 5);
-	cpu.start_pc(0x20);
-	cpu.step();
-	cpu.dump_registers();
-	cpu.step();
-	cpu.dump_memory();
-	cpu.dump_registers();
+	run(program, 5, 2, false);
 }
+
+
+void
+test7()
+{
+	std::cerr << "Starting test 7\n";
+	std::cerr << "\t(First full compiled easy6502 program)\n";
+
+	CPU		cpu(0x210);
+	unsigned char	program[] = {
+		0xa9, 0x01, 0x8d, 0x00, 0x02, 0xa9, 0x05, 0x8d,
+		0x01, 0x02, 0xa9, 0x08, 0x8d, 0x02, 0x02
+	};
+	run(program, 15, 6, false);
+}
+
 
 int
 main(void)
@@ -232,4 +263,5 @@ main(void)
 	//test4();
 	//test5();
 	test6();
+	test7();
 }
