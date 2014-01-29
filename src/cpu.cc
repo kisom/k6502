@@ -488,11 +488,15 @@ CPU::instrc01(uint8_t op)
 			  << std::setfill('0') << this->pc;
 		std::cerr << ": " << std::setw(2) << std::hex << std::setfill('0')
 			  << (unsigned int)(v & 0xff) << std::endl;
+		addr = v;
 		this->step_pc();
-		addr = v << 8;
 		v = this->ram.peek(this->pc);
+		std::cerr << "[DEBUG] PEEK $" << std::setw(4) << std::hex
+			  << std::setfill('0') << this->pc;
+		std::cerr << ": " << std::setw(2) << std::hex << std::setfill('0')
+			  << (unsigned int)(v & 0xff) << std::endl;
+		addr += (v << 8);
 		this->step_pc();
-		addr += v;
 		std::cerr << "[DEBUG] STA $" << std::setw(4) << std::hex
 			  << std::setfill('0') << addr << std::endl;
 		this->STA(addr);
