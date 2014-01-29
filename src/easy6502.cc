@@ -32,6 +32,7 @@ void	test4(void);
 void	test5(void);
 void	test6(void);
 void	test7(void);
+void	test8(void);
 
 
 static void
@@ -172,14 +173,32 @@ test7()
 }
 
 
+void
+test8()
+{
+	std::cerr << "\nStarting test 8\n";
+	std::cerr << "\t(Stack manipulation 1)\n";
+
+
+	unsigned char	program[] = {
+		0xa2, 0x00, 0xa0, 0x00, 0x8a, 0x99, 0x00, 0x02,
+		0x48, 0xe8, 0xc8, 0xc0, 0x10, 0xd0, 0xf5, 0x68,
+		0x99, 0x00, 0x02, 0xc8, 0xc0, 0x20, 0xd0, 0xf7, 
+		0x00
+	};
+	run(program, 25, false);
+}
+
+
 int
 main(void)
 {
-	test1();
-	test2();
-	test3();
-	test4();
-	test5();
-	test6();
-	test7();
+	// test1();
+	// test2();
+	// test3();
+	// test4();
+	// test5();
+	// test6();
+	// test7();
+	test8();
 }
