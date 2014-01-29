@@ -279,15 +279,6 @@ CPU::CMP(uint8_t v)
 
 
 void
-CPU::CMP(uint16_t loc)
-{
-	debug("CMP LOC");
-	uint8_t		v = this->ram.peek(loc);
-	this->CMP(v);
-}
-
-
-void
 CPU::CPX(uint8_t op)
 {
 	uint8_t		v;
@@ -320,6 +311,38 @@ CPU::CPX(uint8_t op)
 
 
 void
+CPU::CPY(uint8_t op)
+{
+	uint8_t		v;
+
+	debug("OP: CPY");
+	this->p &= ~(FLAG_CARRY|FLAG_ZERO|FLAG_NEGATIVE);
+
+	switch ((op & bbb) >> 2) {
+	case C10_MODE_IMM:
+		v = this->read_immed();
+		break;
+	default:
+		v = this->ram.peek(this->read_addr0((op & bbb) >> 2));
+	}
+
+	if (this->y < v) {
+		debug("LT");
+		if ((this->y - v) & 0x80)
+			this->p |= FLAG_NEGATIVE;
+	} else if (this->y == v) {
+		debug("EQ");
+		this->p |= (FLAG_CARRY|FLAG_ZERO);
+	} else if (this->y > v) {
+		debug("GT");
+		this->p |= FLAG_CARRY;
+		if ((this->y - v) & 0x80)
+			this->p |= FLAG_NEGATIVE;
+	}
+}
+
+
+void
 CPU::DEX()
 {
 	debug("OP: DEX");
@@ -333,9 +356,19 @@ CPU::DEX()
 void
 CPU::INX()
 {
-	debug("INX");
+	debug("OP: INX");
 	this->x++;
 	if (this->x == 0)
+		this->p |= (FLAG_ZERO | FLAG_CARRY);
+}
+
+
+void
+CPU::INY()
+{
+	debug("OP: INY");
+	this->y++;
+	if (this->y == 0)
 		this->p |= (FLAG_ZERO | FLAG_CARRY);
 }
 
@@ -450,6 +483,18 @@ CPU::TAX()
 	if (this->a & 0x80)
 		this->p |= FLAG_NEGATIVE;
 	if (this->a == 0)
+		this->p |= FLAG_ZERO;
+}
+
+
+void
+CPU::TXA()
+{
+	debug("OP: TXA");
+	this->a = this->x;
+	if (this->x & 0x80)
+		this->p |= FLAG_NEGATIVE;
+	if (this->x == 0)
 		this->p |= FLAG_ZERO;
 }
 
@@ -616,6 +661,29 @@ CPU::BEQ(uint8_t n)
 
 
 /*
+ * Stack instructions.
+ */
+
+
+void
+CPU::PHA()
+{
+	debug("OP: PHA");
+	this->ram.poke((0x01 << 8) + this->s, this->a);
+	this->s--;
+}
+
+
+void
+CPU::PLA()
+{
+	debug("OP: PLA");
+	this->s++;
+	this->a = this->ram.peek((0x01 << 8) + this->s);
+}
+
+
+/*
  * Instruction processing (reading, parsing, and handling opcodes).
  */
 
@@ -639,11 +707,20 @@ CPU::step()
 	case 0x30: // BMI
 		this->BMI(this->read_immed());
 		return true;
+	case 0x48: // PHA
+		this->PHA();
+		return true;
 	case 0x50: // BVC
 		this->BVC(this->read_immed());
 		return true;
+	case 0x68: // PLA
+		this->PLA();
+		return true;
 	case 0x70: // BVS
 		this->BVS(this->read_immed());
+		return true;
+	case 0x8a: // TXA
+		this->TXA();
 		return true;
 	case 0x90: // BCC
 		this->BCC(this->read_immed());
@@ -651,8 +728,14 @@ CPU::step()
 	case 0xB0: // BCC
 		this->BCS(this->read_immed());
 		return true;
+	case 0xC8: // INY
+		this->INY();
+		return true;
 	case 0xD0: // BNE
 		this->BNE(this->read_immed());
+		return true;
+	case 0xE8: // INX
+		this->INX();
 		return true;
 	}
 
@@ -670,6 +753,7 @@ CPU::step()
 		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (cc): "
 			  << std::setw(2) << std::hex << std::setfill('0')
 			  << (unsigned int)(op&0xff) << std::endl;
+		this->dump_registers();
 	}
 	return false;
 }
@@ -734,43 +818,19 @@ CPU::instrc00(uint8_t op)
 	case 0x05:
 		this->LDY(op);
 		break;
+	case 0x06:
+		this->CPY(op);
+		break;
 	case 0x07:
-		if (0xE8 == op)
-			this->INX();
-		else
-			this->CPX(op);
+		this->CPX(op);
 		break;
 	default:
-		switch (op) {
-		case 0x10: // BPL
-			this->BPL(this->read_immed());
-			break;
-		case 0x30: // BMI
-			this->BMI(this->read_immed());
-			break;
-		case 0x50: // BVC
-			this->BVC(this->read_immed());
-			break;
-		case 0x70: // BVS
-			this->BVS(this->read_immed());
-			break;
-		case 0x90: // BCC
-			this->BCC(this->read_immed());
-			break;
-		case 0xB0: // BCC
-			this->BCS(this->read_immed());
-			break;
-		case 0xD0: // BNE
-			this->BNE(this->read_immed());
-			break;
-		default:
-			std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (INVALID 00): "
-				  << std::setw(2) << std::hex
-				  << std::setfill('0')
-				  << (unsigned int)(op>>5)
-				  << " " << (unsigned int)op << std::endl;
-		break;
-		}
+		this->dump_registers();
+		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (INVALID 00): "
+			  << std::setw(2) << std::hex
+			  << std::setfill('0')
+			  << (unsigned int)(op>>5)
+			  << " " << (unsigned int)op << std::endl;
 	}
 }
 

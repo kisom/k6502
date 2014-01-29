@@ -80,11 +80,11 @@ class CPU {
 		void AND(uint8_t);
 		void AND(uint16_t);
 		void CMP(uint8_t);
-		void CMP(uint16_t);
 		void CPX(uint8_t);
-		void CPX(uint16_t);
+		void CPY(uint8_t);
 		void DEX(void);
 		void INX(void);
+		void INY(void);
 		void LDA(uint8_t);
 		void LDX(uint8_t);
 		void LDY(uint8_t);
@@ -92,6 +92,7 @@ class CPU {
 		void STX(uint8_t);
 		void STY(uint8_t);
 		void TAX(void);
+		void TXA(void);
 
 		// Branching
 		void BPL(uint8_t);
@@ -102,6 +103,10 @@ class CPU {
 		void BCS(uint8_t);
 		void BNE(uint8_t);
 		void BEQ(uint8_t);
+
+		// Stack
+		void PHA(void);
+		void PLA(void);
 	public:
 		CPU();
 		CPU(size_t);
