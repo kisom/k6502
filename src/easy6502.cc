@@ -31,6 +31,7 @@ void	test3(void);
 void	test4(void);
 void	test5(void);
 void	test6(void);
+void	test7(void);
 
 
 static void
@@ -156,6 +157,21 @@ test6()
 }
 
 
+void
+test7()
+{
+	std::cerr << "\nStarting test 7\n";
+	std::cerr << "\t(Indirect indexed addressing)\n";
+
+	unsigned char	program[] = {
+		0xa0, 0x01, 0xa9, 0x03, 0x85, 0x01, 0xa9, 0x01,
+		0x85, 0x02, 0xa2, 0x0a, 0x8e, 0x04, 0x01, 0xb1,
+		0x01, 0x00
+	};
+	run(program, 18, false);
+}
+
+
 int
 main(void)
 {
@@ -165,4 +181,5 @@ main(void)
 	test4();
 	test5();
 	test6();
+	test7();
 }
