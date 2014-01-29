@@ -51,6 +51,7 @@ class CPU {
 		cpu_register16	pc;
 		RAM		ram;
 
+		// CPU control
 		void		reset_registers(void);
 		void		instrc01(uint8_t);
 		void		instrc10(uint8_t);
@@ -59,23 +60,10 @@ class CPU {
 		uint16_t	read_addr0(uint8_t); // cc = 00
 		uint16_t	read_addr1(uint8_t); // cc = 01
 		uint16_t	read_addr2(uint8_t); // cc = 10
-		bool step(void);
-	public:
-		CPU();
-		CPU(size_t);
-
-		void dump_registers(void);
-		void dump_memory(void);
-		void run(bool);
-
-		// Memory access
-		void load(const void *, uint16_t, uint16_t);
-		void store(void *, uint16_t, uint16_t);
 
 		// PC instructions
 		void step_pc(void);
 		void step_pc(uint8_t);
-		void start_pc(uint16_t);
 
 		// status register
 		void BRK(void);
@@ -114,6 +102,21 @@ class CPU {
 		void BCS(uint8_t);
 		void BNE(uint8_t);
 		void BEQ(uint8_t);
+	public:
+		CPU();
+		CPU(size_t);
+
+		void dump_registers(void);
+		void dump_memory(void);
+		void run(bool);
+		bool step(void);
+		void start_pc(uint16_t);
+
+		// Memory access; use this to load a memory image or
+		// write a memory image out.
+		void load(const void *, uint16_t, uint16_t);
+		void store(void *, uint16_t, uint16_t);
+
 };
 
 

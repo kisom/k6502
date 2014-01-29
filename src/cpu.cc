@@ -628,10 +628,32 @@ CPU::step()
 	op = this->ram.peek(this->pc);
 	this->step_pc();
 
-	if (op == 0x00) {
-		std::cerr << "[DEBUG] OP: BRK\n";
+	// Scan single-byte opcodes first
+	switch (op) {
+	case 0x00: // BRK
 		this->BRK();
 		return false;
+	case 0x10: // BPL
+		this->BPL(this->read_immed());
+		return true;
+	case 0x30: // BMI
+		this->BMI(this->read_immed());
+		return true;
+	case 0x50: // BVC
+		this->BVC(this->read_immed());
+		return true;
+	case 0x70: // BVS
+		this->BVS(this->read_immed());
+		return true;
+	case 0x90: // BCC
+		this->BCC(this->read_immed());
+		return true;
+	case 0xB0: // BCC
+		this->BCS(this->read_immed());
+		return true;
+	case 0xD0: // BNE
+		this->BNE(this->read_immed());
+		return true;
 	}
 
 	switch (op & cc) {
@@ -645,12 +667,9 @@ CPU::step()
 		this->instrc10(op);
 		return true;
 	default:
-		switch (op) {
-		default:
-			std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (cc): "
-			    << std::setw(2) << std::hex << std::setfill('0')
-			    << (unsigned int)(op&0xff) << std::endl;
-		}
+		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (cc): "
+			  << std::setw(2) << std::hex << std::setfill('0')
+			  << (unsigned int)(op&0xff) << std::endl;
 	}
 	return false;
 }
@@ -787,6 +806,11 @@ CPU::read_addr1(uint8_t mode)
 		addr = this->read_immed();
 		addr += ((uint16_t)this->read_immed() << 8);
 		break;
+	case C01_MODE_IIZPY:
+		addr = this->read_immed();
+		addr = this->ram.peek(addr) + (this->ram.peek(addr+1)<<8);
+		addr += this->y;
+		break;
 	case C01_MODE_ZPX:
 		addr = (uint8_t)(this->read_immed() + this->x);
 		break;
@@ -825,6 +849,17 @@ CPU::read_addr2(uint8_t mode)
 	case C10_MODE_ABS:
 		addr = this->read_immed();
 		addr += ((uint16_t)this->read_immed() << 8);
+		break;
+	case C10_MODE_X:
+		addr = (uint8_t)(this->read_immed() + this->x);
+		break;
+	case C10_MODE_Y:
+		addr = (uint8_t)(this->read_immed() + this->y);
+		break;
+	case C10_MODE_ABS_X:
+		addr = this->read_immed();
+		addr += ((uint16_t)this->read_immed() << 8);
+		addr += this->x;
 		break;
 	default:
 		debug("INVALID ADDRESSING MODE");
