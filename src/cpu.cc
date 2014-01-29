@@ -137,6 +137,17 @@ CPU::step_pc()
 
 
 void
+CPU::step_pc(uint8_t step)
+{
+	debug("STEP PC");
+	if (step & 0x80)
+		this->pc -= uint8_t(~step);
+	else
+		this->pc += step;
+}
+
+
+void
 CPU::start_pc(uint16_t loc)
 {
 	this->pc = loc;
@@ -173,6 +184,99 @@ CPU::ADC(uint16_t loc)
 
 
 void
+CPU::AND(uint8_t v)
+{
+	debug("AND IMM");
+	this->a &= v;
+
+	if (this->a == 0)
+		this->p |= FLAG_ZERO;
+	if (this->a & 0x80)
+		this->p |= FLAG_NEGATIVE;
+}
+
+
+void
+CPU::AND(uint16_t loc)
+{
+	debug("AND LOC");
+	uint8_t		v = this->ram.peek(loc);
+	this->AND(v);
+}
+
+
+void
+CPU::CMP(uint8_t v)
+{
+	debug("CMP IMM");
+	this->p &= ~(FLAG_CARRY|FLAG_ZERO|FLAG_NEGATIVE);
+	if (this->a < v) {
+		debug("LT");
+		if ((this->a - v) & 0x80)
+			this->p |= FLAG_NEGATIVE;
+	} else if (this->a == v) {
+		debug("EQ");
+		this->p |= (FLAG_CARRY|FLAG_ZERO);
+	} else if (this->a > v) {
+		debug("GT");
+		this->p |= FLAG_CARRY;
+		if ((this->a - v) & 0x80)
+			this->p |= FLAG_NEGATIVE;
+	}
+}
+
+
+void
+CPU::CMP(uint16_t loc)
+{
+	debug("CMP LOC");
+	uint8_t		v = this->ram.peek(loc);
+	this->CMP(v);
+}
+
+
+void
+CPU::CPX(uint8_t v)
+{
+	debug("CPX IMM");
+	this->p &= ~(FLAG_CARRY|FLAG_ZERO|FLAG_NEGATIVE);
+	if (this->x < v) {
+		debug("LT");
+		if ((this->x - v) & 0x80)
+			this->p |= FLAG_NEGATIVE;
+	} else if (this->x == v) {
+		debug("EQ");
+		this->p |= (FLAG_CARRY|FLAG_ZERO);
+	} else if (this->x > v) {
+		debug("GT");
+		this->p |= FLAG_CARRY;
+		if ((this->x - v) & 0x80)
+			this->p |= FLAG_NEGATIVE;
+	}
+}
+
+
+void
+CPU::CPX(uint16_t loc)
+{
+	debug("CPX LOC");
+	uint8_t		v = this->ram.peek(loc);
+	this->CPX(v);
+}
+
+
+void
+CPU::DEX()
+{
+	debug("DEX");
+	this->x--;
+	if (this->x == 0)
+		this->p |= FLAG_ZERO;
+	else if (this->x == 0xFF)
+		this->p |= FLAG_CARRY;
+}
+
+void
 CPU::INX()
 {
 	debug("INX");
@@ -197,10 +301,32 @@ CPU::LDA(uint8_t v)
 
 
 void
+CPU::LDX(uint8_t v)
+{
+	debug("LDA");
+	this->x = v;
+	if (v == 0)
+		this->p |= FLAG_ZERO;
+	if (v & 0x80)
+		this->p |= FLAG_NEGATIVE;
+	else
+		this->p &= ~FLAG_NEGATIVE;
+}
+
+
+void
 CPU::STA(uint16_t loc)
 {
 	debug("STA");
 	this->ram.poke(loc, this->a);
+}
+
+
+void
+CPU::STX(uint16_t loc)
+{
+	debug("STX");
+	this->ram.poke(loc, this->x);
 }
 
 
@@ -281,4 +407,26 @@ CPU::CLV()
 {
 	debug("CLV");
 	this->p &= ~FLAG_OVERFLOW;
+}
+
+
+/*
+ * branching instructions
+ */
+
+void
+CPU::BNE(uint8_t step)
+{
+	if (this->p & FLAG_ZERO)
+		return;
+	this->step_pc(step);
+}
+
+
+void
+CPU::BNE(uint16_t loc)
+{
+	if (this->p & FLAG_ZERO)
+		return;
+	this->pc = loc;
 }

@@ -61,6 +61,7 @@ class CPU {
 
 		// PC instructions
 		void step_pc(void);
+		void step_pc(uint8_t);
 		void start_pc(uint16_t);
 
 		// status register
@@ -76,10 +77,23 @@ class CPU {
 		// Instructions
 		void ADC(uint8_t);
 		void ADC(uint16_t);
+		void AND(uint8_t);
+		void AND(uint16_t);
+		void CMP(uint8_t);
+		void CMP(uint16_t);
+		void CPX(uint8_t);
+		void CPX(uint16_t);
+		void DEX(void);
 		void INX(void);
 		void LDA(uint8_t);
+		void LDX(uint8_t);
 		void STA(uint16_t);
+		void STX(uint16_t);
 		void TAX(void);
+
+		// Branching
+		void BNE(uint8_t);
+		void BNE(uint16_t);
 };
 
 
