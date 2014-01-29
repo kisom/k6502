@@ -51,9 +51,11 @@ class CPU {
 		cpu_register16	pc;
 		RAM		ram;
 
-		void	reset_registers(void);
-		void	instrc01(uint8_t);
-		void	instrc10(uint8_t);
+		void		reset_registers(void);
+		void		instrc01(uint8_t);
+		void		instrc10(uint8_t);
+		uint8_t		read_immed();
+		uint16_t	read_addr(uint8_t);
 	public:
 		CPU();
 		CPU(size_t);
@@ -83,7 +85,6 @@ class CPU {
 
 		// Instructions
 		void ADC(uint8_t);
-		void ADC(uint16_t);
 		void AND(uint8_t);
 		void AND(uint16_t);
 		void CMP(uint8_t);
@@ -94,7 +95,7 @@ class CPU {
 		void INX(void);
 		void LDA(uint8_t);
 		void LDX(uint8_t);
-		void STA(uint16_t);
+		void STA(uint8_t);
 		void STX(uint16_t);
 		void TAX(void);
 
