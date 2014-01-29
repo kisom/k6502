@@ -28,6 +28,9 @@ using namespace std;
 void	test1(void);
 void	test2(void);
 void	test3(void);
+void	test4(void);
+void	test5(void);
+void	test6(void);
 
 
 static void
@@ -54,7 +57,7 @@ dump_program(const unsigned char *program, size_t len)
 
 
 static void
-run(const unsigned char *program, size_t size, size_t steps, bool trace)
+run(const unsigned char *program, size_t size, bool trace)
 {
 	CPU	cpu(0x400);
 	std::cerr << "\nPROGRAM:\n";
@@ -64,14 +67,7 @@ run(const unsigned char *program, size_t size, size_t steps, bool trace)
 	cpu.load(program, 0x300, size);
 	cpu.start_pc(0x300);
 
-	size_t i;
-	for (i = 0; i < steps; ++i) {
-		cpu.step();
-		if (trace) {
-			cpu.dump_memory();
-			cpu.dump_registers();
-		}
-	}
+	cpu.run(trace);
 	cpu.dump_memory();
 	cpu.dump_registers();
 }
@@ -85,7 +81,7 @@ test1()
 
 	// test1, compiled as opcodes
 	unsigned char	program[] = {0xA9, 0x01, 0x8D, 0x01, 0x00};
-	run(program, 5, 2, false);
+	run(program, 5, false);
 }
 
 
@@ -97,9 +93,9 @@ test2()
 
 	unsigned char	program[] = {
 		0xa9, 0x01, 0x8d, 0x00, 0x02, 0xa9, 0x05, 0x8d,
-		0x01, 0x02, 0xa9, 0x08, 0x8d, 0x02, 0x02
+		0x01, 0x02, 0xa9, 0x08, 0x8d, 0x02, 0x02, 0x00
 	};
-	run(program, 15, 6, false);
+	run(program, 15, false);
 }
 
 
@@ -113,14 +109,60 @@ test3()
 		0xa9, 0xc0, 0xaa, 0xe8, 0x69, 0xc4, 0x00
 	};
 
-	run(program, 7, 5, false);
+	run(program, 7, false);
+}
+
+
+void
+test4()
+{
+	std::cerr << "\nStarting test 4\n";
+	std::cerr << "\t(Third full compiled easy6502 program)\n";
+
+	unsigned char	program[] = {
+		0xa9, 0x80, 0x85, 0x01, 0x65, 0x01 
+	};
+
+	run(program, 6, false);
+}
+
+
+void
+test5()
+{
+	std::cerr << "\nStarting test 5\n";
+	std::cerr << "\t(First branching easy6502 program)\n";
+
+	unsigned char	program[] = {
+		0xa2, 0x08, 0xca, 0x8e, 0x00, 0x02, 0xe0, 0x03,
+		0xd0, 0xf8, 0x8e, 0x01, 0x02, 0x00
+	};
+	run(program, 14, false);
+}
+
+
+void
+test6()
+{
+	std::cerr << "\nStarting test 6\n";
+	std::cerr << "\t(Indexed indirect addressing)\n";
+
+	unsigned char	program[] = {
+		0xa2, 0x01, 0xa9, 0x05, 0x85, 0x01, 0xa9, 0x03,
+		0x85, 0x02, 0xa0, 0x0a, 0x8c, 0x05, 0x03, 0xa1,
+		0x00
+	};
+	run(program, 17, false);
 }
 
 
 int
 main(void)
 {
-	// test1();
-	// test2();
+	test1();
+	test2();
 	test3();
+	test4();
+	test5();
+	test6();
 }
