@@ -32,6 +32,7 @@ void	test4(void);
 void	test5(void);
 void	test6(void);
 void	test7(void);
+void	test8(void);
 
 
 static void
@@ -230,7 +231,7 @@ run(const unsigned char *program, size_t size, size_t steps, bool trace)
 void
 test6()
 {
-	std::cerr << "Starting test 6\n";
+	std::cerr << "\nStarting test 6\n";
 	std::cerr << "\t(First compiled program)\n";
 
 	// test1, compiled as opcodes
@@ -242,15 +243,28 @@ test6()
 void
 test7()
 {
-	std::cerr << "Starting test 7\n";
+	std::cerr << "\nStarting test 7\n";
 	std::cerr << "\t(First full compiled easy6502 program)\n";
 
-	CPU		cpu(0x210);
 	unsigned char	program[] = {
 		0xa9, 0x01, 0x8d, 0x00, 0x02, 0xa9, 0x05, 0x8d,
 		0x01, 0x02, 0xa9, 0x08, 0x8d, 0x02, 0x02
 	};
 	run(program, 15, 6, false);
+}
+
+
+void
+test8()
+{
+	std::cerr << "\nStarting test 8\n";
+	std::cerr << "\t(Second full compiled easy6502 program)\n";
+
+	unsigned char	program[] = {
+		0xa9, 0xc0, 0xaa, 0xe8, 0x69, 0xc4, 0x00
+	};
+
+	run(program, 7, 5, false);
 }
 
 
@@ -264,4 +278,5 @@ main(void)
 	//test5();
 	test6();
 	test7();
+	test8();
 }
