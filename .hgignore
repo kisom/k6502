@@ -13,4 +13,4 @@ missing
 .*.sw?
 *.o
 *.a
-src/test
+src/easy6502

@@ -1,3 +1,4 @@
+# because of the githubbers
 Makefile
 Makefile.in
 *.m4
@@ -12,4 +13,4 @@ missing
 .*.sw?
 *.o
 *.a
-src/test
+src/easy6502
