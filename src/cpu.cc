@@ -46,6 +46,7 @@ static const uint8_t	C10_MODE_ZP = 1;
 static const uint8_t	C10_MODE_ACC = 2;
 static const uint8_t	C10_MODE_ABS = 3;
 static const uint8_t	C10_MODE_ZPX = 5;
+static const uint8_t	C10_MODE_ZPY = 8;
 static const uint8_t	C10_MODE_ABSX = 7;
 
 static void
@@ -87,14 +88,7 @@ status_flags(cpu_register8 p)
 static uint8_t
 overflow(uint8_t a, uint8_t b)
 {
-	uint8_t bit7 = 1 << 7;
-	uint8_t carry = ((a << 1 >> 1) + (b << 1 >> 1)) & bit7;
-	uint8_t v;
-
-	//  V = (!M7&!N7&C6) | (M7&N7&!C6) 
-	v = ((!(a & bit7)) & (!(b & bit7)) & carry);
-	v |= ((a & bit7) & (b & bit7) & (!carry));
-	return v;
+	return !((a ^ b) & 0x80);
 }
 
 
@@ -122,7 +116,7 @@ CPU::reset_registers()
 	this->x = 0;
 	this->y = 0;
 	this->p = FLAG_EXPANSION;
-	this->s = 0;
+	this->s = 0xff;
 	this->pc = 0;
 }
 
@@ -156,6 +150,17 @@ CPU::dump_memory()
 
 
 void
+CPU::run(bool trace)
+{
+	while(this->step()) {
+		if (trace) {
+			this->dump_memory();
+			this->dump_registers();
+		}
+	}
+}
+
+void
 CPU::load(const void *src, uint16_t offset, uint16_t len)
 {
 	this->ram.load(src, offset, len);
@@ -181,7 +186,7 @@ CPU::step_pc(uint8_t n)
 {
 	debug("STEP PC");
 	if (n & 0x80)
-		this->pc -= uint8_t(~n);
+		this->pc -= uint8_t(~n) + 1;
 	else
 		this->pc += n;
 }
@@ -204,8 +209,14 @@ CPU::ADC(uint8_t op)
 	case C01_MODE_IMM:
 		debug("MODE: IMM");
 		v = this->read_immed();
+		break;
+	default:
+		v = this->ram.peek(this->read_addr1((op & bbb) >> 2));
+		break;
 	}
 
+	std::cerr << "[DEBUG] ADC V: " << std::setw(2) << std::hex
+		  << std::setfill('0') << ((unsigned int)v&0xff) << "\n";
 	if ((uint8_t)(this->a + v) < (this->a))
 		this->p |= FLAG_CARRY;
 	if (overflow(this->a, v))
@@ -277,10 +288,21 @@ CPU::CMP(uint16_t loc)
 
 
 void
-CPU::CPX(uint8_t v)
+CPU::CPX(uint8_t op)
 {
-	debug("CPX IMM");
+	uint8_t		v;
+
+	debug("OP: CPX");
 	this->p &= ~(FLAG_CARRY|FLAG_ZERO|FLAG_NEGATIVE);
+
+	switch ((op & bbb) >> 2) {
+	case C10_MODE_IMM:
+		v = this->read_immed();
+		break;
+	default:
+		v = this->ram.peek(this->read_addr0((op & bbb) >> 2));
+	}
+
 	if (this->x < v) {
 		debug("LT");
 		if ((this->x - v) & 0x80)
@@ -298,18 +320,9 @@ CPU::CPX(uint8_t v)
 
 
 void
-CPU::CPX(uint16_t loc)
-{
-	debug("CPX LOC");
-	uint8_t		v = this->ram.peek(loc);
-	this->CPX(v);
-}
-
-
-void
 CPU::DEX()
 {
-	debug("DEX");
+	debug("OP: DEX");
 	this->x--;
 	if (this->x == 0)
 		this->p |= FLAG_ZERO;
@@ -330,8 +343,6 @@ CPU::INX()
 void
 CPU::LDA(uint8_t op)
 {
-	// uint16_t	addr;
-
 	debug("OP: LDA");
 	switch ((op & bbb) >> 2) {
 	case C01_MODE_IMM:
@@ -339,7 +350,7 @@ CPU::LDA(uint8_t op)
 		this->a = this->read_immed();
 		break;
 	default:
-		debug("INVALID ADDRESSING MODE");
+		this->a = this->ram.peek(this->read_addr1((op & bbb) >> 2));
 	}
 	if (this->a == 0)
 		this->p |= FLAG_ZERO;
@@ -352,13 +363,41 @@ CPU::LDA(uint8_t op)
 
 
 void
-CPU::LDX(uint8_t v)
+CPU::LDX(uint8_t op)
 {
-	debug("LDA");
-	this->x = v;
-	if (v == 0)
+	debug("OP: LDX");
+	switch ((op & bbb) >> 2) {
+	case C10_MODE_IMM:
+		debug("MODE: IMM");
+		this->x = this->read_immed();
+		break;
+	default:
+		debug("INVALID ADDRESSING MODE");
+	}
+	if (this->x == 0)
 		this->p |= FLAG_ZERO;
-	if (v & 0x80)
+	if (this->x & 0x80)
+		this->p |= FLAG_NEGATIVE;
+	else
+		this->p &= ~FLAG_NEGATIVE;
+}
+
+
+void
+CPU::LDY(uint8_t op)
+{
+	debug("OP: LDY");
+	switch ((op & bbb) >> 2) {
+	case C10_MODE_IMM:
+		debug("MODE: IMM");
+		this->y = this->read_immed();
+		break;
+	default:
+		debug("INVALID ADDRESSING MODE");
+	}
+	if (this->y == 0)
+		this->p |= FLAG_ZERO;
+	if (this->y & 0x80)
 		this->p |= FLAG_NEGATIVE;
 	else
 		this->p &= ~FLAG_NEGATIVE;
@@ -370,18 +409,36 @@ CPU::STA(uint8_t op)
 {
 	debug("OP: STA");
 	switch ((op & bbb) >> 2) {
-	case C01_MODE_ABS:
-		debug("MODE: ABS");
-		this->ram.poke(this->read_addr(C01_MODE_ABS), this->a);
+	case C01_MODE_IMM:
+		debug("MODE: IMM");
+		this->ram.poke((uint16_t)this->read_immed() & 0xff, this->a);
+		break;
+	default:
+		this->ram.poke(this->read_addr1((op & bbb) >> 2), this->a);
+		return;
 	}
 }
 
 
 void
-CPU::STX(uint16_t loc)
+CPU::STX(uint8_t op)
 {
-	debug("STX");
-	this->ram.poke(loc, this->x);
+	debug("OP: STX");
+	switch ((op & bbb) >> 2) {
+	default:
+		this->ram.poke(this->read_addr2((op & bbb) >> 2), this->x);
+	}
+}
+
+
+void
+CPU::STY(uint8_t op)
+{
+	debug("OP: STY");
+	switch ((op & bbb) >> 2) {
+	default:
+		this->ram.poke(this->read_addr0((op & bbb) >> 2), this->y);
+	}
 }
 
 
@@ -469,21 +526,92 @@ CPU::CLV()
  * branching instructions
  */
 
+
 void
-CPU::BNE(uint8_t n)
+CPU::BPL(uint8_t n)
 {
-	if (this->p & FLAG_ZERO)
+	debug("OP: BPL");
+	if (this->p & FLAG_NEGATIVE)
 		return;
+	debug("BRANCH");
 	this->step_pc(n);
 }
 
 
 void
-CPU::BNE(uint16_t loc)
+CPU::BMI(uint8_t n)
 {
+	debug("OP: BMI");
+	if (!(this->p & FLAG_NEGATIVE))
+		return;
+	debug("BRANCH");
+	this->step_pc(n);
+}
+
+
+void
+CPU::BVC(uint8_t n)
+{
+	debug("OP: BVC");
+	if (this->p & FLAG_OVERFLOW)
+		return;
+	debug("BRANCH");
+	this->step_pc(n);
+}
+
+
+void
+CPU::BVS(uint8_t n)
+{
+	debug("OP: BVS");
+	if (!(this->p & FLAG_OVERFLOW))
+		return;
+	debug("BRANCH");
+	this->step_pc(n);
+}
+
+
+void
+CPU::BCC(uint8_t n)
+{
+	debug("OP: BCC");
+	if (this->p & FLAG_CARRY)
+		return;
+	debug("BRANCH");
+	this->step_pc(n);
+}
+
+
+void
+CPU::BCS(uint8_t n)
+{
+	debug("OP: BCS");
+	if (!(this->p & FLAG_CARRY))
+		return;
+	debug("BRANCH");
+	this->step_pc(n);
+}
+
+
+void
+CPU::BNE(uint8_t n)
+{
+	debug("OP: BNE");
 	if (this->p & FLAG_ZERO)
 		return;
-	this->pc = loc;
+	debug("BRANCH");
+	this->step_pc(n);
+}
+
+
+void
+CPU::BEQ(uint8_t n)
+{
+	debug("OP: BEQ");
+	if (!(this->p & FLAG_ZERO))
+		return;
+	debug("BRANCH");
+	this->step_pc(n);
 }
 
 
@@ -491,7 +619,7 @@ CPU::BNE(uint16_t loc)
  * Instruction processing (reading, parsing, and handling opcodes).
  */
 
-void
+bool
 CPU::step()
 {
 	uint8_t		op;
@@ -500,26 +628,31 @@ CPU::step()
 	op = this->ram.peek(this->pc);
 	this->step_pc();
 
+	if (op == 0x00) {
+		std::cerr << "[DEBUG] OP: BRK\n";
+		this->BRK();
+		return false;
+	}
+
 	switch (op & cc) {
+	case 0x00:
+		this->instrc00(op);
+		return true;
 	case 0x01:
 		this->instrc01(op);
-		return;
+		return true;
 	case 0x02:
 		this->instrc10(op);
-		return;
+		return true;
 	default:
-		if (op == 0xe8) {
-			std::cerr << "[DEBUG] OP: INX\n";
-			this->INX();
-		} else if (op == 0x00) {
-			std::cerr << "[DEBUG] OP: BRK\n";
-			this->BRK();
-		} else {
+		switch (op) {
+		default:
 			std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (cc): "
 			    << std::setw(2) << std::hex << std::setfill('0')
 			    << (unsigned int)(op&0xff) << std::endl;
 		}
 	}
+	return false;
 }
 
 
@@ -537,11 +670,10 @@ CPU::instrc01(uint8_t op)
 		this->LDA(op);
 		return;
 	default:
-		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (cc): "
+		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (01): "
 			  << std::setw(2) << std::hex << std::setfill('0')
 			  << (unsigned int)(op&0xff) << std::endl;
-		std::cerr << "[DEBUG] CC = " << (unsigned int)(op >> 5)
-			  << "\n";
+		std::cerr << "[DEBUG] OP = " << (unsigned int)op << "\n";
 	}
 }
 
@@ -549,18 +681,77 @@ CPU::instrc01(uint8_t op)
 void
 CPU::instrc10(uint8_t op)
 {
-	// uint16_t	addr;
-	// uint8_t		v;
-
 	switch (op >> 5) {
-	case 0x05:	// TAX
-		this->TAX();
+	case 0x04:
+		this->STX(op);
+		break;
+	case 0x05:	// LDX / TAX
+		if (((op & bbb) >> 2) == C10_MODE_ACC)
+			this->TAX();
+		else
+			this->LDX(op);
+		break;
+	case 0x06:
+		if (0xCA == op)
+			this->DEX();
 		break;
 	default:
 		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (INVALID 10): "
 			  << std::setw(2) << std::hex << std::setfill('0')
-			  << (unsigned int)(op&0xff) << std::endl;
+			  << (unsigned int)(op>>5)
+			  << " " << (unsigned int)op << std::endl;
 		break;
+	}
+}
+
+
+void
+CPU::instrc00(uint8_t op)
+{
+	switch (op >> 5) {
+	case 0x04:
+		this->STY(op);
+		break;
+	case 0x05:
+		this->LDY(op);
+		break;
+	case 0x07:
+		if (0xE8 == op)
+			this->INX();
+		else
+			this->CPX(op);
+		break;
+	default:
+		switch (op) {
+		case 0x10: // BPL
+			this->BPL(this->read_immed());
+			break;
+		case 0x30: // BMI
+			this->BMI(this->read_immed());
+			break;
+		case 0x50: // BVC
+			this->BVC(this->read_immed());
+			break;
+		case 0x70: // BVS
+			this->BVS(this->read_immed());
+			break;
+		case 0x90: // BCC
+			this->BCC(this->read_immed());
+			break;
+		case 0xB0: // BCC
+			this->BCS(this->read_immed());
+			break;
+		case 0xD0: // BNE
+			this->BNE(this->read_immed());
+			break;
+		default:
+			std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (INVALID 00): "
+				  << std::setw(2) << std::hex
+				  << std::setfill('0')
+				  << (unsigned int)(op>>5)
+				  << " " << (unsigned int)op << std::endl;
+		break;
+		}
 	}
 }
 
@@ -579,16 +770,88 @@ CPU::read_immed()
 
 
 uint16_t
-CPU::read_addr(uint8_t mode)
+CPU::read_addr1(uint8_t mode)
 {
 	uint16_t	addr;
 
 	switch (mode) {
+	case C01_MODE_IIZPX:
+		addr = this->read_immed();
+		addr += this->x;
+		addr = this->ram.peek(addr) + (this->ram.peek(addr+1)<<8);
+		break;
+	case C01_MODE_ZP:
+		addr = this->read_immed();
+		break;
 	case C01_MODE_ABS:
 		addr = this->read_immed();
 		addr += ((uint16_t)this->read_immed() << 8);
 		break;
+	case C01_MODE_ZPX:
+		addr = (uint8_t)(this->read_immed() + this->x);
+		break;
+	case C01_MODE_ABSY:
+		addr = this->read_immed();
+		addr += ((uint16_t)this->read_immed() << 8);
+		addr += this->y;
+		break;
+	case C01_MODE_ABSX:
+		addr = this->read_immed();
+		addr += ((uint16_t)this->read_immed() << 8);
+		addr += this->x;
+		break;
 	default:
+		debug("INVALID ADDRESSING MODE");
+		std::cerr << "[DEBUG] MODE: " << std::setw(1)<< std::hex
+			  << mode << std::endl;
+		addr = 0;
+	}
+
+	std::cerr << "[DEBUG] ADDR: $" << std::setw(4) << std::setfill('0')
+		  << std::hex << addr << std::endl;
+	return addr;
+}
+
+
+uint16_t
+CPU::read_addr2(uint8_t mode)
+{
+	uint16_t	addr;
+
+	switch (mode) {
+	case C10_MODE_ZP:
+		addr = this->read_immed();
+		break;
+	case C10_MODE_ABS:
+		addr = this->read_immed();
+		addr += ((uint16_t)this->read_immed() << 8);
+		break;
+	default:
+		debug("INVALID ADDRESSING MODE");
+		addr = 0;
+	}
+
+	std::cerr << "[DEBUG] ADDR: $" << std::setw(4) << std::setfill('0')
+		  << std::hex << addr << std::endl;
+	return addr;
+}
+
+
+uint16_t
+CPU::read_addr0(uint8_t mode)
+{
+	uint16_t	addr;
+
+	switch (mode) {
+	case C10_MODE_ZP:
+		addr = this->read_immed();
+		break;
+	case C10_MODE_ABS:
+		addr = this->read_immed();
+		addr += ((uint16_t)this->read_immed() << 8);
+		break;
+	default:
+		debug("INVALID ADDRESSING MODE");
 		addr = 0;
 	}
 

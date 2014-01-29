@@ -54,15 +54,19 @@ class CPU {
 		void		reset_registers(void);
 		void		instrc01(uint8_t);
 		void		instrc10(uint8_t);
+		void		instrc00(uint8_t);
 		uint8_t		read_immed();
-		uint16_t	read_addr(uint8_t);
+		uint16_t	read_addr0(uint8_t); // cc = 00
+		uint16_t	read_addr1(uint8_t); // cc = 01
+		uint16_t	read_addr2(uint8_t); // cc = 10
+		bool step(void);
 	public:
 		CPU();
 		CPU(size_t);
 
 		void dump_registers(void);
 		void dump_memory(void);
-		void step(void);
+		void run(bool);
 
 		// Memory access
 		void load(const void *, uint16_t, uint16_t);
@@ -95,13 +99,21 @@ class CPU {
 		void INX(void);
 		void LDA(uint8_t);
 		void LDX(uint8_t);
+		void LDY(uint8_t);
 		void STA(uint8_t);
-		void STX(uint16_t);
+		void STX(uint8_t);
+		void STY(uint8_t);
 		void TAX(void);
 
 		// Branching
+		void BPL(uint8_t);
+		void BMI(uint8_t);
+		void BVC(uint8_t);
+		void BVS(uint8_t);
+		void BCC(uint8_t);
+		void BCS(uint8_t);
 		void BNE(uint8_t);
-		void BNE(uint16_t);
+		void BEQ(uint8_t);
 };
 
 
