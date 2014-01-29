@@ -462,6 +462,18 @@ CPU::step()
 
 	if (op & 0x01) {
 		this->instrc01(op);
+	} else if (op & 0x2) {
+		this->instrc10(op);
+	} else if (op == 0xe8) {
+		std::cerr << "[DEBUG] OP: INX\n";
+		this->INX();
+	} else if (op == 0x00) {
+		std::cerr << "[DEBUG] OP: BRK\n";
+		this->BRK();
+	} else {
+		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (INVALID cc): "
+			  << std::setw(2) << std::hex << std::setfill('0')
+			  << (unsigned int)(op&0xff) << std::endl;
 	}
 }
 
@@ -500,6 +512,41 @@ CPU::instrc01(uint8_t op)
 		std::cerr << "[DEBUG] STA $" << std::setw(4) << std::hex
 			  << std::setfill('0') << addr << std::endl;
 		this->STA(addr);
+		break;
+	case 0x69:	// ADC IMM
+		std::cerr << "[DEBUG] OP: ADC MODE: IMM\n";
+		v = this->ram.peek(this->pc);
+		std::cerr << "[DEBUG] PEEK $" << std::setw(4) << std::hex
+			  << std::setfill('0') << this->pc;
+		std::cerr << ": " << std::setw(2) << std::hex << std::setfill('0')
+			  << (unsigned int)(v & 0xff) << std::endl;
+		this->step_pc();
+		this->ADC(v);
+		break;
+	default:
+		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (INVALID 01): "
+			  << std::setw(2) << std::hex << std::setfill('0')
+			  << (unsigned int)(op&0xff) << std::endl;
+		break;
+	}
+}
+
+
+void
+CPU::instrc10(uint8_t op)
+{
+	// uint16_t	addr;
+	// uint8_t		v;
+
+	switch (op) {
+	case 0xAA:	// TAX
+		std::cerr << "[DEBUG] OP: TAX\n";
+		this->TAX();
+		break;
+	default:
+		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (INVALID 10): "
+			  << std::setw(2) << std::hex << std::setfill('0')
+			  << (unsigned int)(op&0xff) << std::endl;
 		break;
 	}
 }

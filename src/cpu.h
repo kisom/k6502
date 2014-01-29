@@ -53,6 +53,7 @@ class CPU {
 
 		void	reset_registers(void);
 		void	instrc01(uint8_t);
+		void	instrc10(uint8_t);
 	public:
 		CPU();
 		CPU(size_t);
