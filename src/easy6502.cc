@@ -33,6 +33,8 @@ void	test5(void);
 void	test6(void);
 void	test7(void);
 void	test8(void);
+void	test9(void);
+void	test10(void);
 
 
 static void
@@ -179,7 +181,6 @@ test8()
 	std::cerr << "\nStarting test 8\n";
 	std::cerr << "\t(Stack manipulation 1)\n";
 
-
 	unsigned char	program[] = {
 		0xa2, 0x00, 0xa0, 0x00, 0x8a, 0x99, 0x00, 0x02,
 		0x48, 0xe8, 0xc8, 0xc0, 0x10, 0xd0, 0xf5, 0x68,
@@ -187,6 +188,35 @@ test8()
 		0x00
 	};
 	run(program, 25, false);
+}
+
+
+void
+test9()
+{
+	std::cerr << "\nStarting test 9\n";
+	std::cerr << "\t(jump)\n";
+
+	unsigned char	program[] = {
+		0xa9, 0x03, 0x4c, 0x08, 0x03, 0x00, 0x00, 0x00,
+		0x8d, 0x00, 0x02, 0x00
+	};
+	run(program, 12, false);
+}
+
+
+void
+test10()
+{
+	std::cerr << "\nStarting test 10\n";
+	std::cerr << "\t(JSR/RTS)\n";
+
+	unsigned char	program[] = {
+		0x20, 0x09, 0x03, 0x20, 0x0c, 0x03, 0x20, 0x12,
+		0x03, 0xa2, 0x00, 0x60, 0xe8, 0xe0, 0x05, 0xd0,
+		0xfb, 0x60, 0x00, 0x00
+	};
+	run(program, 20, false);
 }
 
 
@@ -200,5 +230,7 @@ main(void)
 	// test5();
 	// test6();
 	// test7();
-	test8();
+	// test8();
+	// test9();
+	test10();
 }
