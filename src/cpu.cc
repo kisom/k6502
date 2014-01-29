@@ -850,13 +850,13 @@ CPU::read_addr2(uint8_t mode)
 		addr = this->read_immed();
 		addr += ((uint16_t)this->read_immed() << 8);
 		break;
-	case C10_MODE_X:
+	case C10_MODE_ZPX:
 		addr = (uint8_t)(this->read_immed() + this->x);
 		break;
-	case C10_MODE_Y:
+	case C10_MODE_ZPY:
 		addr = (uint8_t)(this->read_immed() + this->y);
 		break;
-	case C10_MODE_ABS_X:
+	case C10_MODE_ABSX:
 		addr = this->read_immed();
 		addr += ((uint16_t)this->read_immed() << 8);
 		addr += this->x;
