@@ -49,6 +49,9 @@ static const uint8_t	C10_MODE_ZPX = 5;
 static const uint8_t	C10_MODE_ZPY = 8;
 static const uint8_t	C10_MODE_ABSX = 7;
 
+
+// debug prints a debug string to stderr, if the global flag
+// DEBUG is defined.
 static void
 debug(const char *s)
 {
@@ -58,6 +61,8 @@ debug(const char *s)
 }
 
 
+// status_flags places a formatted binary representation of the status
+// register for use in dumping registers.
 static char *
 status_flags(cpu_register8 p)
 {
@@ -85,6 +90,8 @@ status_flags(cpu_register8 p)
 }
 
 
+// overflow returns true if the add/sub of the two 8-bit integers results
+// in a an overflow.
 static uint8_t
 overflow(uint8_t a, uint8_t b)
 {
@@ -92,6 +99,8 @@ overflow(uint8_t a, uint8_t b)
 }
 
 
+// CPU creates a new processor with the designated amount of memory
+// attached.
 CPU::CPU(size_t memory)
 {
 	debug("INIT MEMORY");
@@ -101,6 +110,7 @@ CPU::CPU(size_t memory)
 }
 
 
+// CPU creates a new processor with the default memory size (128k).
 CPU::CPU()
 {
 	debug("default ctor");
@@ -108,6 +118,10 @@ CPU::CPU()
 }
 
 
+// reset_registers resets all registers to their power-on defaults. For
+// A, X, and Y, this is zero. For the status register, the expansion
+// (unused) bit is high. The stack points back to 0x1ff, and the program
+// count is set to zero.
 void
 CPU::reset_registers()
 {
@@ -121,7 +135,7 @@ CPU::reset_registers()
 }
 
 
-
+// dump registers prints out the registers to standard error.
 void
 CPU::dump_registers()
 {
@@ -142,6 +156,7 @@ CPU::dump_registers()
 }
 
 
+// dump_memory dumps the contents of RAM as a hex dump.
 void
 CPU::dump_memory()
 {
@@ -149,6 +164,9 @@ CPU::dump_memory()
 }
 
 
+// run begins stepping the CPU, fetching and executing instructions from
+// memory. If trace is true, after each step, the memory and registers
+// will be dumped.
 void
 CPU::run(bool trace)
 {
@@ -160,6 +178,8 @@ CPU::run(bool trace)
 	}
 }
 
+// load is used to load a program into memory. This is effectively a memcpy
+// of the source into the CPU's attached memory.
 void
 CPU::load(const void *src, uint16_t offset, uint16_t len)
 {
@@ -167,6 +187,8 @@ CPU::load(const void *src, uint16_t offset, uint16_t len)
 }
 
 
+// store copies memory from the CPU's attached memory to the destination
+// buffer.
 void
 CPU::store(void *dest, uint16_t offset, uint16_t len)
 {
@@ -192,13 +214,20 @@ CPU::step_pc(uint8_t n)
 }
 
 
+// set_entry sets the entry point for the CPU.
 void
-CPU::start_pc(uint16_t loc)
+CPU::set_entry(uint16_t loc)
 {
 	this->pc = loc;
 }
 
 
+/*
+ * Instructions. These generally take either no argument or the
+ * actual op code as input (the opcode allows the emulator to
+ * determine which addressing mode to use). For instructions with
+ * only one addressing mode (i.e. INX), no parameter is required.
+ */
 void
 CPU::ADC(uint8_t op)
 {
@@ -215,8 +244,10 @@ CPU::ADC(uint8_t op)
 		break;
 	}
 
+#if DEBUG
 	std::cerr << "[DEBUG] ADC V: " << std::setw(2) << std::hex
 		  << std::setfill('0') << ((unsigned int)v&0xff) << "\n";
+#endif
 	if ((uint8_t)(this->a + v) < (this->a))
 		this->p |= FLAG_CARRY;
 	if (overflow(this->a, v))
@@ -236,9 +267,17 @@ CPU::ADC(uint8_t op)
 
 
 void
-CPU::AND(uint8_t v)
+CPU::AND(uint8_t op)
 {
-	debug("AND IMM");
+	uint8_t	v;
+	debug("OP: AND");
+
+	switch ((op & bbb) >> 2) {
+	case C01_MODE_IMM:
+		v = this->read_immed();
+	default:
+		v = this->ram.peek(this->read_addr1((op & bbb) >> 2));
+	}
 	this->a &= v;
 
 	if (this->a == 0)
@@ -249,18 +288,18 @@ CPU::AND(uint8_t v)
 
 
 void
-CPU::AND(uint16_t loc)
+CPU::CMP(uint8_t op)
 {
-	debug("AND LOC");
-	uint8_t		v = this->ram.peek(loc);
-	this->AND(v);
-}
+	uint8_t	v = 0;
+	debug("OP: CMP");
 
-
-void
-CPU::CMP(uint8_t v)
-{
-	debug("CMP IMM");
+	switch ((op & bbb) >> 2) {
+	case C01_MODE_IMM:
+		v = this->read_immed();
+		break;
+	default:
+		v = this->ram.peek(this->read_addr1((op & bbb) >> 2));
+	}
 	this->p &= ~(FLAG_CARRY|FLAG_ZERO|FLAG_NEGATIVE);
 	if (this->a < v) {
 		debug("LT");
@@ -291,7 +330,7 @@ CPU::CPX(uint8_t op)
 		v = this->read_immed();
 		break;
 	default:
-		v = this->ram.peek(this->read_addr0((op & bbb) >> 2));
+		v = this->ram.peek(this->read_addr1((op & bbb) >> 2));
 	}
 
 	if (this->x < v) {
@@ -352,6 +391,29 @@ CPU::DEX()
 	else if (this->x == 0xFF)
 		this->p |= FLAG_CARRY;
 }
+
+
+void
+CPU::EOR(uint8_t op)
+{
+	debug("OP: EOR");
+	uint8_t	v;
+
+	switch ((op & bbb) >> 2) {
+	case C10_MODE_IMM:
+		v = read_immed();
+		break;
+	default:
+		v = this->ram.peek(this->read_addr1((op & bbb) >> 2));
+	}
+
+	this->a ^= v;
+	if (this->a == 0)
+		this->p |= FLAG_ZERO;
+	if (this->a & 0x80)
+		this->p |= FLAG_NEGATIVE;
+}
+
 
 void
 CPU::INX()
@@ -434,6 +496,27 @@ CPU::LDY(uint8_t op)
 		this->p |= FLAG_NEGATIVE;
 	else
 		this->p &= ~FLAG_NEGATIVE;
+}
+
+
+void
+CPU::ORA(uint8_t op)
+{
+	uint8_t	v;
+	debug("OP: ORA");
+
+	switch ((op & bbb) >> 2) {
+	case C01_MODE_IMM:
+		v = this->read_immed();
+	default:
+		v = this->ram.peek(this->read_addr1((op & bbb) >> 2));
+	}
+	this->a |= v;
+
+	if (this->a == 0)
+		this->p |= FLAG_ZERO;
+	if (this->a & 0x80)
+		this->p |= FLAG_NEGATIVE;
 }
 
 
@@ -665,9 +748,11 @@ CPU::JMP()
 {
 	debug("OP: JMP");
 	uint16_t	addr = this->read_addr1(C01_MODE_ABS);
+#if DEBUG
 	std::cerr << "[DEBUG] JMP ADDR: " << std::setw(4)
 		  << std::hex << std::setfill('0')
 		  << addr << std::endl;
+#endif
 	this->pc = addr;
 }
 
@@ -730,6 +815,14 @@ CPU::PLA()
  * Instruction processing (reading, parsing, and handling opcodes).
  */
 
+
+size_t
+CPU::get_steps()
+{
+	return this->steps;
+}
+
+
 bool
 CPU::step()
 {
@@ -738,6 +831,7 @@ CPU::step()
 	debug("STEP");
 	op = this->ram.peek(this->pc);
 	this->step_pc();
+	this->steps++;
 
 	// Scan single-byte opcodes first
 	switch (op) {
@@ -746,6 +840,9 @@ CPU::step()
 		return false;
 	case 0x10: // BPL
 		this->BPL(this->read_immed());
+		return true;
+	case 0x18: // CLC
+		this->CLC();
 		return true;
 	case 0x20: // JSR
 		this->JSR();
@@ -783,6 +880,9 @@ CPU::step()
 	case 0xC8: // INY
 		this->INY();
 		return true;
+	case 0xCA: // DEX
+		this->DEX();
+		return true;
 	case 0xD0: // BNE
 		this->BNE(this->read_immed());
 		return true;
@@ -802,10 +902,13 @@ CPU::step()
 		this->instrc10(op);
 		return true;
 	default:
+#if DEBUG
 		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (cc): "
 			  << std::setw(2) << std::hex << std::setfill('0')
 			  << (unsigned int)(op&0xff) << std::endl;
 		this->dump_registers();
+#endif
+		break;
 	}
 	return false;
 }
@@ -815,6 +918,12 @@ void
 CPU::instrc01(uint8_t op)
 {
 	switch (op >> 5) {
+	case 0x0: // ORA
+		this->ORA(op);
+		break;
+	case 0x1: // AND
+		this->AND(op);
+		break;
 	case 0x3: // ADC
 		this->ADC(op);
 		return;
@@ -824,11 +933,17 @@ CPU::instrc01(uint8_t op)
 	case 0x5: // LDA
 		this->LDA(op);
 		return;
+	case 0x6: // CMP
+		this->CMP(op);
+		return;
 	default:
+#if DEBUG
 		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (01): "
 			  << std::setw(2) << std::hex << std::setfill('0')
 			  << (unsigned int)(op&0xff) << std::endl;
 		std::cerr << "[DEBUG] OP = " << (unsigned int)op << "\n";
+#endif
+		break;
 	}
 }
 
@@ -847,14 +962,14 @@ CPU::instrc10(uint8_t op)
 			this->LDX(op);
 		break;
 	case 0x06:
-		if (0xCA == op)
-			this->DEX();
 		break;
 	default:
+#if DEBUG
 		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (INVALID 10): "
 			  << std::setw(2) << std::hex << std::setfill('0')
 			  << (unsigned int)(op>>5)
 			  << " " << (unsigned int)op << std::endl;
+#endif
 		break;
 	}
 }
@@ -878,11 +993,13 @@ CPU::instrc00(uint8_t op)
 		break;
 	default:
 		this->dump_registers();
+#if DEBUG
 		std::cerr << "[DEBUG] ILLEGAL INSTRUCTION (INVALID 00): "
 			  << std::setw(2) << std::hex
 			  << std::setfill('0')
 			  << (unsigned int)(op>>5)
 			  << " " << (unsigned int)op << std::endl;
+#endif
 	}
 }
 
@@ -891,11 +1008,15 @@ uint8_t
 CPU::read_immed()
 {
 	uint8_t	v;
+#if DEBUG
 	std::cerr << "[DEBUG] PEEK $" << std::hex << std::setfill('0')
 		  << std::setw(4) << this->pc;
+#endif
 	v = this->ram.peek(this->pc);
 	this->step_pc();
+#if DEBUG
 	std::cerr << ": " << std::setw(2) << ((unsigned int)v & 0xff) << "\n";
+#endif
 	return v;
 }
 
@@ -938,13 +1059,17 @@ CPU::read_addr1(uint8_t mode)
 		break;
 	default:
 		debug("INVALID ADDRESSING MODE");
+#if DEBUG
 		std::cerr << "[DEBUG] MODE: " << std::setw(1)<< std::hex
 			  << mode << std::endl;
+#endif
 		addr = 0;
 	}
 
+#if DEBUG
 	std::cerr << "[DEBUG] ADDR: $" << std::setw(4) << std::setfill('0')
 		  << std::hex << addr << std::endl;
+#endif
 	return addr;
 }
 
@@ -978,8 +1103,10 @@ CPU::read_addr2(uint8_t mode)
 		addr = 0;
 	}
 
+#if DEBUG
 	std::cerr << "[DEBUG] ADDR: $" << std::setw(4) << std::setfill('0')
 		  << std::hex << addr << std::endl;
+#endif
 	return addr;
 }
 
@@ -1002,12 +1129,15 @@ CPU::read_addr0(uint8_t mode)
 		addr = 0;
 	}
 
+#if DEBUG
 	std::cerr << "[DEBUG] ADDR: $" << std::setw(4) << std::setfill('0')
 		  << std::hex << addr << std::endl;
+#endif
 	return addr;
 }
 
 
+// The DMA read function allows the host to peer into the CPU's memory.
 uint8_t
 CPU::DMA(uint16_t loc)
 {
@@ -1015,6 +1145,9 @@ CPU::DMA(uint16_t loc)
 }
 
 
+// The DMA store function allows the host to manipulate the VM's
+// memory. This might be useful, i.e. for graphics adapters and input
+// devices.
 void
 CPU::DMA(uint16_t loc, uint8_t val)
 {

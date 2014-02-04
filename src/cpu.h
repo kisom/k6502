@@ -50,6 +50,7 @@ class CPU {
 		cpu_register8	s;
 		cpu_register16	pc;
 		RAM		ram;
+		size_t		steps;
 
 		// CPU control
 		void		reset_registers(void);
@@ -78,16 +79,17 @@ class CPU {
 		// Instructions
 		void ADC(uint8_t);
 		void AND(uint8_t);
-		void AND(uint16_t);
 		void CMP(uint8_t);
 		void CPX(uint8_t);
 		void CPY(uint8_t);
 		void DEX(void);
+		void EOR(uint8_t);
 		void INX(void);
 		void INY(void);
 		void LDA(uint8_t);
 		void LDX(uint8_t);
 		void LDY(uint8_t);
+		void ORA(uint8_t);
 		void STA(uint8_t);
 		void STX(uint8_t);
 		void STY(uint8_t);
@@ -118,7 +120,7 @@ class CPU {
 		void dump_memory(void);
 		void run(bool);
 		bool step(void);
-		void start_pc(uint16_t);
+		void set_entry(uint16_t);
 
 		// Memory access; use this to load a memory image or
 		// write a memory image out.
@@ -127,6 +129,8 @@ class CPU {
 
 		uint8_t DMA(uint16_t);
 		void DMA(uint16_t, uint8_t);
+
+		size_t get_steps(void);
 
 };
 
